@@ -12,6 +12,7 @@ the diff to [Hunk](https://hunkdiff.com) for me to read. It never commits.
 install.sh                     link this repo into place (idempotent)
 scripts/sync.sh                pull live settings back here for committing
 skills-upstream.tsv            skills used but not vendored, and where they come from
+amos-upstream.tsv              extensions linked out of a pi-config clone, same idea
 
 agents/skills/                 hand-authored skills, linked to ~/.agents/skills
   mindful-loop/                the orchestrator: one commit, seven stops
@@ -20,18 +21,32 @@ pi/agent/
   settings.json                permissions and packages (copied, not linked)
   AGENTS.md                    working agreement, loaded into every session
   agents/hunk-reviewer.md      read-only second reviewer (pi-subagents)
-  extensions/skill-invoke.ts   the invoke_skill tool
   themes/                      terminal theme
+  extensions/
+    skill-invoke.ts            the invoke_skill tool
+    custom-header.ts           startup header
 ```
+
+Four more extensions and one skill are installed from a clone rather than kept
+here — see [What is here and what is only referenced](#what-is-here-and-what-is-only-referenced).
 
 ## Install
 
 ```bash
+git clone https://github.com/mattpocock/skills       ~/development/skills
+git clone https://github.com/amosblomqvist/pi-config ~/development/pi-config
+
 git clone <this repo> ~/development/pi-agent-config
 cd ~/development/pi-agent-config
 ./install.sh --dry-run     # see what it would do
 ./install.sh
+
+# The browser extension is the only piece with dependencies of its own.
+cd ~/development/pi-config/extensions/browser
+npm install && ./node_modules/.bin/playwright-core install chromium   # ~115 MB, once per machine
 ```
+
+Both clone paths are overridable: `POCOCK_SKILLS` and `AMOS_CONFIG`.
 
 Hand-authored files are **symlinked**, so editing the live file and editing the
 repo are the same act, and `git status` is the truth about what has changed.
@@ -59,6 +74,24 @@ from wherever their owner installs them, listed in `skills-upstream.tsv`:
 
 This keeps the repo publishable without redistributing anyone's work, and means
 `git pull` in the upstream clone updates the skills in place.
+
+Extensions follow the same rule, in `amos-upstream.tsv`:
+
+| Source | What | Where it comes from |
+|---|---|---|
+| [amosblomqvist/pi-config](https://github.com/amosblomqvist/pi-config) | ask-user-question, prompt-snippets, browser, analyze-sessions | a clone at `$AMOS_CONFIG`, default `~/development/pi-config` |
+
+That repo says to copy the pieces you want, but it carries **no LICENSE**, so its
+files are all-rights-reserved by default and redistributing them from a public
+repo of mine is not mine to do. They are linked out of a clone instead. The one
+exception is `custom-header.ts`, which is written here from pi's own documented
+`ctx.ui.setHeader` API — a header is a thing you edit, and a symlink into
+somebody else's git clone is a bad place to edit anything.
+
+Real pi packages are installed with `pi install` and recorded in `settings.json`,
+which is versioned here:
+[`observational-memory`](https://github.com/amosblomqvist/pi-observational-memory)
+(MIT), `pi-hunk`, `@pi-lab/permissions`, `pi-subagents`.
 
 Credentials, sessions, and the model cache are gitignored. `auth.json` in
 particular must never land here.
@@ -91,6 +124,33 @@ invoke_skill(name="grilling")      expand and run that skill
 invoke_skill(name=…, reload=true)  re-expand after compaction dropped it
 ```
 
+## The extensions, and why each one is here
+
+| Extension | What it adds | Default |
+|---|---|---|
+| `skill-invoke.ts` | `invoke_skill` — see above | always on |
+| `ask-user-question.ts` | `ask_user_question`: a real single-question UI (free text, single- or multi-select, always with an "Other" escape) that blocks the turn until answered | always on |
+| `prompt-snippets/` | `alt+s` / `/snippets`: toggle small behaviour rules onto the next message only — "verify, don't assume", "diagnose, don't fix", "delegate exploration". Resets after every send | always on, nothing active |
+| `custom-header.ts` | The startup header. `/builtin-header` restores pi's own | always on |
+| `browser/` | `browser_goto`, `browser_eval`, `browser_console`, `browser_network`, `browser_fill`, `browser_click`, `browser_screenshot` — a real Chromium the agent can drive | **off**; `/browser on` |
+| `observational-memory` | Observers distil the conversation into a ledger; compaction renders it verbatim instead of asking a model to summarise; a consolidator promotes the oldest into durable `.memory/<session>/` files | **off**; `/om on` |
+
+Adding your own prompt snippet means writing into the pi-config clone —
+`prompt-snippets` resolves `snippets/` relative to the realpath of its own
+`index.ts`, so a link cannot redirect it.
+
+`ask_user_question` is the one that changes how the other skills feel. Before it,
+a skill asking the human something could only end its turn and hope; now the
+question is a tool call with a real answer coming back, which is what `grilling`
+and phase 2 of `mindful-loop` were always describing.
+
+`browser/` and `observational-memory` are both off by default and cost nothing
+until switched on: the browser tools are registered but invisible to the model,
+and every observational-memory hook and subprocess returns immediately while the
+gate is off. `observational-memory` spawns `pi` subprocesses when on — it
+defaults to `openrouter` / `z-ai/glm-5.3` for both workers, and shows the running
+spend in the footer and in `/om:status`.
+
 ## Notes for anyone borrowing this
 
 - **Claude Code does not read `~/.agents/skills`.** Only `~/.claude/skills`.
@@ -99,6 +159,11 @@ invoke_skill(name=…, reload=true)  re-expand after compaction dropped it
 - **`~/.pi/agent/skills/` is pi-private; `~/.agents/skills/` is the cross-agent
   convention** that `npx skills`, Cline, and others read. Never put the same
   skill in both — pi keeps the first it finds and says nothing.
+- **`pi-interactive-subagents` cannot be installed alongside `pi-subagents`.**
+  Both register a tool named `subagent`, and pi does not merge or shadow on a
+  tool-name clash — it fails the whole extension load
+  (`Tool "subagent" conflicts with ...`), taking `bg_wait`, every `subagents-*`
+  command, and the hunk-reviewer agent with it. Pick one.
 - The permission rules in `settings.json` deny force-push, history destruction,
   recursive deletes, and `sudo` outright, and ask before every other bash, write,
   and edit. Note that `git commit` is only *ask* — "never commit" is a rule the

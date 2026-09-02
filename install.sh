@@ -19,11 +19,13 @@
 #
 # Environment:
 #   POCOCK_SKILLS  clone of github.com/mattpocock/skills (default ~/development/skills)
+#   AMOS_CONFIG    clone of github.com/amosblomqvist/pi-config (default ~/development/pi-config)
 
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 POCOCK_SKILLS="${POCOCK_SKILLS:-$HOME/development/skills}"
+AMOS_CONFIG="${AMOS_CONFIG:-$HOME/development/pi-config}"
 OMARCHY_SKILLS="/usr/share/omarchy/default/agents/skills"
 AGENT_HOME="$HOME/.pi/agent"
 AGENTS_SKILLS="$HOME/.agents/skills"
@@ -37,7 +39,10 @@ for arg in "$@"; do
 	case "$arg" in
 		--dry-run) DRY_RUN=1 ;;
 		--claude) LINK_CLAUDE=1 ;;
-		-h|--help) sed -n '2,25p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+		# Print the header comment block: every line from 2 until the first
+		# non-comment. A fixed line range silently starts leaking code the
+		# moment the block grows.
+		-h|--help) sed -n '2,${/^#/!q;p;}' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
 		*) echo "unknown argument: $arg" >&2; exit 2 ;;
 	esac
 done
@@ -95,9 +100,15 @@ seed() {
 }
 
 echo "==> extensions"
+# Single-file extensions, then directory extensions (a directory whose
+# package.json names the entry point; pi loads either shape).
 for ext in "$REPO"/pi/agent/extensions/*.ts; do
 	[[ -e $ext ]] || continue
 	link "$ext" "$AGENT_HOME/extensions/$(basename "$ext")"
+done
+for ext in "$REPO"/pi/agent/extensions/*/; do
+	[[ -d $ext ]] || continue
+	link "${ext%/}" "$AGENT_HOME/extensions/$(basename "${ext%/}")"
 done
 
 echo "==> hand-authored skills"
@@ -105,6 +116,27 @@ for skill in "$REPO"/agents/skills/*/; do
 	[[ -d $skill ]] || continue
 	link "${skill%/}" "$AGENTS_SKILLS/$(basename "${skill%/}")"
 done
+
+echo "==> upstream extensions and pi-private skills"
+# Linked out of the pi-config clone rather than copied: that repo has no
+# LICENSE, so redistributing its files from this one is not mine to do.
+# pi-skill entries go to ~/.pi/agent/skills, not ~/.agents/skills: they read
+# pi's own session store, so they are pi-private, not cross-agent.
+if [[ ! -d $AMOS_CONFIG ]]; then
+	warn "no clone at $AMOS_CONFIG — git clone https://github.com/amosblomqvist/pi-config"
+else
+	while IFS=$'\t' read -r kind name path; do
+		[[ -z ${kind:-} || $kind == \#* ]] && continue
+		case "$kind" in
+			extension) link "$AMOS_CONFIG/$path" "$AGENT_HOME/extensions/$name" ;;
+			pi-skill)  link "$AMOS_CONFIG/$path" "$AGENT_HOME/skills/$name" ;;
+			*)         warn "unknown kind '$kind' for $name" ;;
+		esac
+	done < "$REPO/amos-upstream.tsv"
+	if [[ -f $AMOS_CONFIG/extensions/browser/package.json && ! -d $AMOS_CONFIG/extensions/browser/node_modules ]]; then
+		warn "browser extension has no deps: (cd $AMOS_CONFIG/extensions/browser && npm install && ./node_modules/.bin/playwright-core install chromium)"
+	fi
+fi
 
 echo "==> upstream skills"
 while IFS=$'\t' read -r name source path; do

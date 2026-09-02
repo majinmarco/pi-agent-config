@@ -1,0 +1,14 @@
+# Extensions and pi-private skills linked out of a clone of
+# github.com/amosblomqvist/pi-config. They are LINKED, not copied: that repo
+# carries no LICENSE, so redistributing its files from a public repo of mine
+# would not be mine to do. Clone it and run ./install.sh:
+#
+#   git clone https://github.com/amosblomqvist/pi-config ~/development/pi-config
+#
+# Override the location with AMOS_CONFIG=/path/to/clone.
+#
+# kind	name	path within the clone
+extension	ask-user-question.ts	extensions/ask-user-question.ts
+extension	prompt-snippets	extensions/prompt-snippets
+extension	browser	extensions/browser
+pi-skill	analyze-sessions	skills/analyze-sessions

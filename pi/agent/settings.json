@@ -70,7 +70,8 @@
   "packages": [
     "npm:@roodriigoooo/pi-hunk",
     "npm:@pi-lab/permissions",
-    "npm:pi-subagents"
+    "npm:pi-subagents",
+    "git:github.com/amosblomqvist/pi-observational-memory"
   ],
   "lastChangelogVersion": "0.84.4",
   "theme": "dark"
