@@ -1,0 +1,27 @@
+# Credentials — never commit these.
+auth.json
+**/auth.json
+.env
+.env.*
+*.key
+*.pem
+
+# pi runtime state, not configuration.
+models-store.json
+trust.json
+sessions/
+npm/
+node_modules/
+pre-install-backups/
+
+# Local backups made by editors, installers, and earlier agent runs.
+*.bak
+*.bak.*
+*.pre-install.*
+*.orig
+*.rej
+
+# OS and editor junk.
+.DS_Store
+*.swp
+*~

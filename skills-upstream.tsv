@@ -1,0 +1,30 @@
+# Skills this config uses but does not vendor.
+#
+# These belong to other people. Rather than copying them into this repo —
+# which would redistribute them and freeze them at whatever revision they
+# happened to be on — install.sh links them from where their owner installs
+# them. Run install.sh again after updating a source to pick up changes.
+#
+# name<TAB>source<TAB>path-within-source
+#
+#   pocock   github.com/mattpocock/skills, cloned to $POCOCK_SKILLS
+#            (default ~/development/skills). MIT.
+#   hunk     ships inside the hunk binary; path from `hunk skill path`.
+#   omarchy  ships with Omarchy at /usr/share/omarchy/default/agents/skills.
+#
+# Recorded upstream revision for pocock at last install:
+#   6654f6b feat: add 'Information access' category to retrospective skill
+
+grilling	pocock	skills/productivity/grilling
+grill-me	pocock	skills/productivity/grill-me
+teach	pocock	skills/productivity/teach
+grill-with-docs	pocock	skills/engineering/grill-with-docs
+diagnosing-bugs	pocock	skills/engineering/diagnosing-bugs
+domain-modeling	pocock	skills/engineering/domain-modeling
+to-tickets	pocock	skills/engineering/to-tickets
+implement	pocock	skills/engineering/implement
+code-review	pocock	skills/engineering/code-review
+tdd	pocock	skills/engineering/tdd
+hunk-review	hunk	-
+diagnose-crash	omarchy	diagnose-crash
+omarchy	omarchy	omarchy

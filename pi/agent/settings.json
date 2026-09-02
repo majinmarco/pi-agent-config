@@ -1,0 +1,77 @@
+{
+  "defaultProvider": "openrouter",
+  "defaultModel": "z-ai/glm-5.3-flash",
+  "permissions": {
+    "rules": [
+      {
+        "message": "No force pushes",
+        "priority": 10,
+        "match": {
+          "tool": "bash",
+          "params": {
+            "command": "git\\s+push[^\\n]*(--force|-f\\b)"
+          }
+        },
+        "action": "deny"
+      },
+      {
+        "message": "No history destruction",
+        "priority": 10,
+        "match": {
+          "tool": "bash",
+          "params": {
+            "command": "git\\s+(reset\\s+--hard|clean\\s+-[a-zA-Z]*f|branch\\s+-D)"
+          }
+        },
+        "action": "deny"
+      },
+      {
+        "message": "No recursive deletes",
+        "priority": 10,
+        "match": {
+          "tool": "bash",
+          "params": {
+            "command": "rm\\s+-[a-zA-Z]*r[a-zA-Z]*f?"
+          }
+        },
+        "action": "deny"
+      },
+      {
+        "message": "No privilege escalation",
+        "priority": 10,
+        "match": {
+          "tool": "bash",
+          "params": {
+            "command": "sudo"
+          }
+        },
+        "action": "deny"
+      },
+      {
+        "match": {
+          "tool": "bash"
+        },
+        "action": "ask"
+      },
+      {
+        "match": {
+          "tool": "write"
+        },
+        "action": "ask"
+      },
+      {
+        "match": {
+          "tool": "edit"
+        },
+        "action": "ask"
+      }
+    ]
+  },
+  "packages": [
+    "npm:@roodriigoooo/pi-hunk",
+    "npm:@pi-lab/permissions",
+    "npm:pi-subagents"
+  ],
+  "lastChangelogVersion": "0.84.4",
+  "theme": "dark"
+}
