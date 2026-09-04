@@ -4,6 +4,58 @@
   "permissions": {
     "rules": [
       {
+        "message": "Reading files needs no approval",
+        "priority": 5,
+        "match": {
+          "tool": "read"
+        },
+        "action": "allow"
+      },
+      {
+        "message": "Read-only inspection commands (ls, cat, find, rg, ...)",
+        "priority": 5,
+        "match": {
+          "tool": "bash",
+          "params": {
+            "command": "^\\s*(ls|ll|la|cat|head|tail|wc|file|stat|du|df|find|rg|grep|tree|readlink|realpath|basename|dirname|which|pwd|diff|sort|uniq|cut|jq|md5sum|sha256sum|cksum|whoami|date|uname|hostname)\\b"
+          }
+        },
+        "action": "allow"
+      },
+      {
+        "message": "Read-only git commands (status, log, diff, rev-parse, ...)",
+        "priority": 5,
+        "match": {
+          "tool": "bash",
+          "params": {
+            "command": "^\\s*git\\s+(status|log|show|diff|rev-parse|ls-files|ls-remote|describe|blame|shortlog|cat-file|check-ignore|grep|remote\\s+-v|remote$|branch\\s+(-a|-v|-vv|--list)|branch$|tag\\s+(-l|--list)|tag$|config\\s+--get)"
+          }
+        },
+        "action": "allow"
+      },
+      {
+        "message": "Read-only curl probe (curl -sf <url>, no output file)",
+        "priority": 5,
+        "match": {
+          "tool": "bash",
+          "params": {
+            "command": "^\\s*curl\\s+(-sf|-fs|-s\\s+-f|-f\\s+-s)\\s+\\S+\\s*$"
+          }
+        },
+        "action": "allow"
+      },
+      {
+        "message": "Version/help probes (<cmd> --version|--help)",
+        "priority": 5,
+        "match": {
+          "tool": "bash",
+          "params": {
+            "command": "^\\s*\\S+\\s+(--version|-V|-v|--help|-h)\\s*$"
+          }
+        },
+        "action": "allow"
+      },
+      {
         "message": "No force pushes",
         "priority": 10,
         "match": {
@@ -74,5 +126,13 @@
     "git:github.com/amosblomqvist/pi-observational-memory"
   ],
   "lastChangelogVersion": "0.84.4",
-  "theme": "dark"
+  "theme": "dark",
+  "hideThinkingBlock": true,
+  "modelTiers": {
+    "super": "openrouter/z-ai/glm-5.3",
+    "sub": "openrouter/z-ai/glm-5.3-flash"
+  },
+  "subagents": {
+    "defaultModel": "openrouter/z-ai/glm-5.3-flash:high"
+  }
 }

@@ -24,6 +24,7 @@ pi/agent/
   themes/                      terminal theme
   extensions/
     skill-invoke.ts            the invoke_skill tool
+    model-tiers.ts             SUPER/SUB model tiers and the /tier command
     custom-header.ts           startup header
 ```
 
@@ -129,6 +130,7 @@ invoke_skill(name=…, reload=true)  re-expand after compaction dropped it
 | Extension | What it adds | Default |
 |---|---|---|
 | `skill-invoke.ts` | `invoke_skill` — see above | always on |
+| `model-tiers.ts` | Two model tiers: SUPER (`openrouter/z-ai/glm-5.3`, effort max) plans and orchestrates, SUB (`openrouter/z-ai/glm-5.3-flash`, effort medium or high when the API has no medium) executes; effort applies only when the model's API exposes it. `/tier super\|sub <model>` changes one — rejected unless the model is in the registry, has auth, and answers a live API ping. The SUB tier is mirrored into `subagents.defaultModel`, so pi-subagents children execute on SUB; loading an orchestrator skill (frontmatter `tier: super`, or by default any SKILL.md that mentions `invoke_skill`) switches the session to SUPER. `/super` and `/sub` switch by hand | always on |
 | `ask-user-question.ts` | `ask_user_question`: a real single-question UI (free text, single- or multi-select, always with an "Other" escape) that blocks the turn until answered | always on |
 | `prompt-snippets/` | `alt+s` / `/snippets`: toggle small behaviour rules onto the next message only — "verify, don't assume", "diagnose, don't fix", "delegate exploration". Resets after every send | always on, nothing active |
 | `custom-header.ts` | The startup header. `/builtin-header` restores pi's own | always on |
