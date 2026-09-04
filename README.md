@@ -16,6 +16,9 @@ amos-upstream.tsv              extensions linked out of a pi-config clone, same 
 
 agents/skills/                 hand-authored skills, linked to ~/.agents/skills
   mindful-loop/                the orchestrator: one commit, seven stops
+  grilling/                    fork of mattpocock's grilling (MIT) that asks its
+                               rounds through question_round instead of a wall of text
+  grill-me/                    user-invoked pointer to grilling
 
 pi/agent/
   settings.json                permissions and packages (copied, not linked)
@@ -25,6 +28,7 @@ pi/agent/
   extensions/
     skill-invoke.ts            the invoke_skill tool
     model-tiers.ts             SUPER/SUB model tiers and the /tier command
+    question-round.ts          the question_round wizard UI (used by grilling)
     custom-header.ts           startup header
 ```
 
@@ -69,7 +73,12 @@ from wherever their owner installs them, listed in `skills-upstream.tsv`:
 
 | Source | Skills | Where it comes from |
 |---|---|---|
-| [mattpocock/skills](https://github.com/mattpocock/skills) (MIT) | grilling, grill-me, grill-with-docs, teach, tdd, diagnosing-bugs, domain-modeling, to-tickets, implement, code-review | a clone at `$POCOCK_SKILLS`, default `~/development/skills` |
+| [mattpocock/skills](https://github.com/mattpocock/skills) (MIT) | grill-with-docs, teach, tdd, diagnosing-bugs, domain-modeling, to-tickets, implement, code-review | a clone at `$POCOCK_SKILLS`, default `~/development/skills` |
+
+`grilling` and `grill-me` used to be in that list; they are now hand-authored
+forks in `agents/skills/` (MIT permits it, with credit in each `SKILL.md`),
+because the forked grilling delivers its question rounds through the
+`question_round` UI below instead of numbered questions in a message.
 | [hunk](https://hunkdiff.com) | hunk-review | ships inside the binary; path from `hunk skill path` |
 | [Omarchy](https://omarchy.org) | omarchy, diagnose-crash | `/usr/share/omarchy/default/agents/skills` |
 
@@ -132,6 +141,7 @@ invoke_skill(name=…, reload=true)  re-expand after compaction dropped it
 | `skill-invoke.ts` | `invoke_skill` — see above | always on |
 | `model-tiers.ts` | Two model tiers: SUPER (`openrouter/z-ai/glm-5.3`, effort max) plans and orchestrates, SUB (`openrouter/z-ai/glm-5.3-flash`, effort medium or high when the API has no medium) executes; effort applies only when the model's API exposes it. `/tier super\|sub <model>` changes one — rejected unless the model is in the registry, has auth, and answers a live API ping. The SUB tier is mirrored into `subagents.defaultModel`, so pi-subagents children execute on SUB; loading an orchestrator skill (frontmatter `tier: super`, or by default any SKILL.md that mentions `invoke_skill`) switches the session to SUPER. `/super` and `/sub` switch by hand | always on |
 | `ask-user-question.ts` | `ask_user_question`: a real single-question UI (free text, single- or multi-select, always with an "Other" escape) that blocks the turn until answered | always on |
+| `question-round.ts` | `question_round`: a whole round of questions as a tabbed wizard — one question on screen at a time, ■/□ progress, per-option descriptions and a ★ recommended marker, write-in escape everywhere, a review screen before submit, and optional per-question **exhibits** (preformatted monospace panels: ASCII diagrams, decision trees, comparison tables). Cancelling reports which questions were already answered. Serializes with `ask_user_question` on a shared UI lock. Written here from pi's documented `ctx.ui.custom()` API, starting from the MIT `questionnaire.ts` example that ships with pi | always on |
 | `prompt-snippets/` | `alt+s` / `/snippets`: toggle small behaviour rules onto the next message only — "verify, don't assume", "diagnose, don't fix", "delegate exploration". Resets after every send | always on, nothing active |
 | `custom-header.ts` | The startup header. `/builtin-header` restores pi's own | always on |
 | `browser/` | `browser_goto`, `browser_eval`, `browser_console`, `browser_network`, `browser_fill`, `browser_click`, `browser_screenshot` — a real Chromium the agent can drive | **off**; `/browser on` |
