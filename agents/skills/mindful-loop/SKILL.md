@@ -25,6 +25,7 @@ After every STOP, write to that file, in this shape, before ending the turn:
 
 ```
 Phase: <number> — waiting on <what>
+Ticket: <path to the ticket file, when a ticket-loop queue is driving this run>
 Plan: <the six lines approved in phase 2>
 Files: <the approved file list>
 Test: <path::name of the approved test, once phase 4 is done>
@@ -37,10 +38,19 @@ The loop outlives your context window. This file is the only thing that does.
 Ask for the change in one sentence. If the sentence contains "and", it is
 two changes. Ask which one goes first. STOP.
 
+If invoked with a ticket file path (/skill:mindful-loop
+.scratch/<slug>/issues/NN-<name>.md), read the ticket instead of asking.
+The change is its first unchecked acceptance criterion, framed back in one
+sentence for a yes. Record the path as `Ticket:` in the state file, set
+the ticket's `**Status:**` to `in-progress`, and point `Current:` in its
+`queue.md` at it. The one-sentence test still applies to the criterion:
+a criterion that is two changes goes back to the user to split. STOP.
+
 If what comes back is a feature rather than a commit — more than one slice,
 or the user cannot state it without listing steps — STOP and say: "This is
-more than one commit. Run /skill:to-tickets first, then /skill:mindful-loop
-on ticket 01." Do not start the loop on a fragment you chose yourself.
+more than one commit. Run /skill:ticket-loop first, then /skill:mindful-loop
+on the ticket it points you at." Do not start the loop on a fragment you
+chose yourself.
 
 If the change is a bug fix — a symptom rather than an approach — do phase 1b
 before phase 2.
@@ -152,6 +162,19 @@ You reach this phase only when the user says the review is approved — an
 empty submission starts no turn, so you will not be told automatically.
 
 State the test that now passes, the files touched, and `Ready to commit.`
+
+If the state file names a ticket, also advance the queue — these files are
+git-ignored, so none of this touches the changeset:
+
+- Tick the acceptance criteria this change satisfied, in the ticket file.
+- All ticked → set the ticket's `**Status:**` to `done` and update its
+  `queue.md` (status, Current, Frontier). Statuses are exactly
+  `open | in-progress | done`; never write anything else.
+- End with one line naming the next command, which is the user's to type:
+  - criteria remain → `Ticket NN continues. Next: /skill:mindful-loop <same path>`
+  - frontier non-empty → `Ticket NN complete. Next: /skill:mindful-loop <path>`
+  - queue empty → `All tickets in <slug> are done.`
+
 Then STOP.
 
 ## Rules that override everything above
