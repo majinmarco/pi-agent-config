@@ -15,13 +15,13 @@
 # Recorded upstream revision for pocock at last install:
 #   6654f6b feat: add 'Information access' category to retrospective skill
 
-# grilling and grill-me are NOT linked from pocock any more: this repo carries
-# a hand-authored fork in agents/skills/ that drives the question_round UI.
+# grilling, grill-me, and to-tickets are NOT linked from pocock any more: this
+# repo carries hand-authored forks in agents/skills/ — grilling drives the
+# question_round UI, to-tickets adds the ticket schema and super-tickets.
 teach	pocock	skills/productivity/teach
 grill-with-docs	pocock	skills/engineering/grill-with-docs
 diagnosing-bugs	pocock	skills/engineering/diagnosing-bugs
 domain-modeling	pocock	skills/engineering/domain-modeling
-to-tickets	pocock	skills/engineering/to-tickets
 implement	pocock	skills/engineering/implement
 code-review	pocock	skills/engineering/code-review
 tdd	pocock	skills/engineering/tdd

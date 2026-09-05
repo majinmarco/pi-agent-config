@@ -19,6 +19,9 @@ agents/skills/                 hand-authored skills, linked to ~/.agents/skills
   grilling/                    fork of mattpocock's grilling (MIT) that asks its
                                rounds through question_round instead of a wall of text
   grill-me/                    user-invoked pointer to grilling
+  to-tickets/                  fork of mattpocock's to-tickets (MIT) with a formal
+                               ticket schema and super-/sub-tickets
+  ticket-loop/                 driver: idea → grill → to-tickets → mindful-loop queue
 
 pi/agent/
   settings.json                permissions and packages (copied, not linked)
@@ -73,12 +76,17 @@ from wherever their owner installs them, listed in `skills-upstream.tsv`:
 
 | Source | Skills | Where it comes from |
 |---|---|---|
-| [mattpocock/skills](https://github.com/mattpocock/skills) (MIT) | grill-with-docs, teach, tdd, diagnosing-bugs, domain-modeling, to-tickets, implement, code-review | a clone at `$POCOCK_SKILLS`, default `~/development/skills` |
+| [mattpocock/skills](https://github.com/mattpocock/skills) (MIT) | grill-with-docs, teach, tdd, diagnosing-bugs, domain-modeling, implement, code-review | a clone at `$POCOCK_SKILLS`, default `~/development/skills` |
 
-`grilling` and `grill-me` used to be in that list; they are now hand-authored
-forks in `agents/skills/` (MIT permits it, with credit in each `SKILL.md`),
-because the forked grilling delivers its question rounds through the
-`question_round` UI below instead of numbered questions in a message.
+`grilling`, `grill-me`, and `to-tickets` used to be in that list; they are now
+hand-authored forks in `agents/skills/` (MIT permits it, with credit in each
+`SKILL.md`). The forked grilling delivers its question rounds through the
+`question_round` UI below instead of numbered questions in a message; the
+forked to-tickets writes every ticket to a formal schema (type, per-file
+impact, blockers, acceptance criteria) and can split a
+must-ship-together slice into a **super-ticket** whose sub-tickets (`03a`,
+`03b`, …) all block the super, which is the final integrate-and-ship step —
+`ticket-loop`'s queue and `mindful-loop` drive both shapes unchanged.
 | [hunk](https://hunkdiff.com) | hunk-review | ships inside the binary; path from `hunk skill path` |
 | [Omarchy](https://omarchy.org) | omarchy, diagnose-crash | `/usr/share/omarchy/default/agents/skills` |
 
