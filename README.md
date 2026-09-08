@@ -35,6 +35,7 @@ pi/agent/
     model-tiers.ts             SUPER/SUB model tiers and the /tier command
     question-round.ts          the question_round wizard UI (used by grilling)
     custom-header.ts           startup header
+    plan-approval.ts           the plan_approval panel (mindful-loop phase 2)
     loop-status.ts             live mindful-loop widget, /loop-status panel,
                                and ticket autocomplete for /skill:mindful-loop
 ```

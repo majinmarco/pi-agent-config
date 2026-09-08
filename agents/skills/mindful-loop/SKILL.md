@@ -96,11 +96,17 @@ out of scope, and anything the ticket leaves genuinely unclear. Open with
 the phase 1 framing plus these questions in one round; most ticket runs
 should close in that round.
 
-Then write the plan back in six lines or fewer, save it to the state file,
-and ask for a yes. STOP.
+Then write the plan in six lines or fewer and present it with the
+`plan_approval` tool — the same lines you will save, plus the file list
+and the "done" line. The tool blocks until the user decides, so it is
+this phase's stop. If the tool is unavailable (no TUI, not installed),
+write the plan in the message, ask for a yes, and STOP instead.
 
-If the answer is no, the objection becomes a new frontier question and this
-phase restarts. Scope is never renegotiated later than this phase.
+- Approved → save the plan to the state file (approval does not remove the
+  need to survive a context rollover) and continue to phase 3.
+- Objection → the note becomes a new frontier question and this phase
+  restarts. Scope is never renegotiated later than this phase.
+- Cancelled → not approval. Update the state file and STOP.
 
 ## 3. Read-only pass
 
