@@ -166,7 +166,7 @@ All ticked → phase 6.
 ## 6. Hand off
 
 Say what changed in one sentence — the whole ticket, in a ticket run. Then
-say exactly: `Ready for /hunk review.` STOP.
+say exactly: `Ready for review. Run /skill:hunk-review.` STOP.
 
 From here, do not touch the working tree. Hunk fingerprints the changeset at
 review time; any edit flips the checkpoint to re-review-due and `/hunk submit`

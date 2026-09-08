@@ -44,6 +44,17 @@
         "action": "allow"
       },
       {
+        "message": "Hunk CLI commands need no approval",
+        "priority": 5,
+        "match": {
+          "tool": "bash",
+          "params": {
+            "command": "^\\s*hunk(\\s+[^;|&`$<>]*)?$"
+          }
+        },
+        "action": "allow"
+      },
+      {
         "message": "Test runs (optionally chained after cd/sed -n/echo, piped to tail/head/grep)",
         "priority": 5,
         "match": {
