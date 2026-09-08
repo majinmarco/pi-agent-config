@@ -12,9 +12,9 @@
   the next obvious thing.
 - Scope is exactly what I stated. No new dependencies, no new files, no
   drive-by refactors, no renames I didn't ask for.
-- Tests: write the failing test first, then stop and show it to me. I
-  approve or rewrite it before you implement. Never write the test and the
-  implementation in the same turn.
+- Tests are autopilot: write the failing test first, run it, show it red,
+  implement, show it green. Decide structure and cases yourself — never
+  stop to ask me about tests.
 - Prefer editing existing code over adding abstraction. If you think a new
   layer is needed, say so and stop.
 
@@ -25,6 +25,9 @@
 - When I leave inline comments in a live Hunk session, load the hunk-review
   skill, read my comments, and address them one at a time — smallest first.
   Reply to each comment with what you changed.
+- When you review a changeset through hunk-review, comment on every changed
+  file EXCEPT tests: skip test files entirely (tests are autopilot — theirs
+  is not a surface I review), and comment on all other code.
 
 ## Never
 
