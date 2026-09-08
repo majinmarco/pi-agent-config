@@ -11,17 +11,19 @@
  *   .scratch/<slug>/issues/NN-*.md        ticket Status + criteria checkboxes
  *   .scratch/<slug>/queue.md              ticket table, Current, Frontier
  *
- * `/loop-status` toggles the expanded panel (all tickets + all criteria).
- * `/loop-status hide` clears the widget for this session; `/loop-status show`
- * brings it back. Refreshes on turn/tool events and on fs.watch of .scratch.
+ * The layout adapts to the rendered width, so it stays legible in a narrow
+ * tile (1/3–1/5 of a screen): wide terminals get one dense summary line,
+ * narrow ones a stacked card. `/loop-status` toggles the expanded panel
+ * (all tickets + all criteria); `/loop-status hide` clears the widget for
+ * this session, `/loop-status show` brings it back. Refreshes on turn/tool
+ * events and on fs.watch of .scratch.
  */
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 
 const WIDGET_KEY = "loop-status";
-const MAX_WIDTH = 100;
 
 interface QueueRow {
 	id: string;
@@ -42,6 +44,8 @@ interface Snapshot {
 	current?: string;
 	frontier?: string;
 }
+
+// ── data ────────────────────────────────────────────────────────────────
 
 function readIfFile(p: string): string | undefined {
 	try {
@@ -114,57 +118,167 @@ function collect(cwd: string): Snapshot | undefined {
 	return anything ? snap : undefined;
 }
 
-function clamp(line: string): string {
-	return line.length > MAX_WIDTH ? `${line.slice(0, MAX_WIDTH - 1)}…` : line;
+// ── text utilities ──────────────────────────────────────────────────────
+// Styled strings carry ANSI escapes, so width math walks visible chars and
+// copies escape sequences wholesale. Local on purpose: keeps the file
+// runnable outside pi for layout testing.
+
+const ANSI = /\x1b\[[0-9;]*m/y;
+
+function visibleWidth(s: string): number {
+	let w = 0;
+	for (let i = 0; i < s.length; ) {
+		ANSI.lastIndex = i;
+		const m = ANSI.exec(s);
+		if (m) {
+			i += m[0].length;
+		} else {
+			w++;
+			i++;
+		}
+	}
+	return w;
 }
 
-function statusGlyph(status: string, isCurrent: boolean): string {
-	if (isCurrent) return "▶";
-	if (status === "done") return "✔";
-	if (status === "in-progress") return "▶";
-	return "·";
+function truncAnsi(s: string, width: number): string {
+	if (visibleWidth(s) <= width) return s;
+	let out = "";
+	let w = 0;
+	let sawAnsi = false;
+	for (let i = 0; i < s.length && w < width - 1; ) {
+		ANSI.lastIndex = i;
+		const m = ANSI.exec(s);
+		if (m) {
+			out += m[0];
+			sawAnsi = true;
+			i += m[0].length;
+		} else {
+			out += s[i];
+			w++;
+			i++;
+		}
+	}
+	return out + "…" + (sawAnsi ? "\x1b[0m" : "");
 }
 
-function render(snap: Snapshot, expanded: boolean): string[] {
+/** Plain-text ellipsis truncation for strings styled afterwards. */
+function fit(s: string, width: number): string {
+	if (width <= 1) return "…";
+	return s.length > width ? `${s.slice(0, width - 1)}…` : s;
+}
+
+function bar(done: number, total: number, width: number, theme: Theme): string {
+	if (total === 0 || width < 2) return "";
+	const filled = Math.round((done / total) * width);
+	return (
+		theme.fg("success", "▰".repeat(filled)) + theme.fg("dim", "▱".repeat(width - filled))
+	);
+}
+
+function rule(label: string, width: number, theme: Theme): string {
+	const head = label ? `─ ${label} ` : "";
+	const rest = Math.max(0, width - head.length);
+	return theme.fg("dim", head + "─".repeat(rest));
+}
+
+// ── layout ──────────────────────────────────────────────────────────────
+
+function renderLines(snap: Snapshot, expanded: boolean, width: number, theme: Theme): string[] {
+	const w = Math.max(24, width);
+	const narrow = w < 72;
 	const lines: string[] = [];
-	const doneCount = snap.rows.filter((r) => r.status === "done").length;
 	const critDone = snap.criteria.filter((c) => c.done).length;
+	const queueDone = snap.rows.filter((r) => r.status === "done").length;
 
-	let head = "◉ mindful-loop";
-	if (snap.phase) head += ` · phase ${snap.phase}`;
-	else if (snap.slug) head += ` · ${snap.slug} — no run in progress`;
+	// Phase splits into number and the human part after the dash.
+	const phaseM = snap.phase?.match(/^(\S+)\s*(?:—|-)\s*(.*)$/);
+	const phaseNo = phaseM ? phaseM[1] : snap.phase;
+	const phaseWait = phaseM ? phaseM[2] : undefined;
+
+	// Header: ◉ mindful-loop · phase 4 — waiting on test approval
+	let head = theme.fg("accent", "◉ ") + theme.bold(theme.fg("accent", "mindful-loop"));
+	if (phaseNo) {
+		head += theme.fg("dim", " · ") + theme.bold(`phase ${phaseNo}`);
+		if (phaseWait && !narrow) head += theme.fg("dim", " — ") + theme.fg("warning", phaseWait);
+	} else if (snap.slug) {
+		head += theme.fg("dim", ` · ${snap.slug} — idle`);
+	}
 	lines.push(head);
+	if (phaseWait && narrow) {
+		lines.push("  " + theme.fg("warning", fit(phaseWait, w - 2)));
+	}
 
-	const bits: string[] = [];
+	// Current ticket + criteria progress.
 	if (snap.ticketId) {
-		const bar = snap.criteria.map((c) => (c.done ? "✓" : "·")).join("");
-		bits.push(`${snap.ticketId} ${snap.ticketTitle ?? ""} ${bar} ${critDone}/${snap.criteria.length}`);
+		const barW = Math.max(6, Math.min(14, w - 14));
+		const meter = `${bar(critDone, snap.criteria.length, barW, theme)} ${theme.bold(`${critDone}/${snap.criteria.length}`)}`;
+		if (narrow) {
+			const title = fit(`${snap.ticketId} ${snap.ticketTitle ?? ""}`.trim(), w - 4);
+			lines.push("  " + theme.fg("accent", "▸ ") + theme.bold(title));
+			lines.push(`    ${meter} ${theme.fg("muted", "criteria")}`);
+		} else {
+			const title = fit(`${snap.ticketId} ${snap.ticketTitle ?? ""}`.trim(), w - barW - 22);
+			lines.push("  " + theme.fg("accent", "▸ ") + theme.bold(title) + "  " + meter + " " + theme.fg("muted", "criteria"));
+		}
 	}
+
+	// Queue summary.
 	if (snap.rows.length > 0) {
-		bits.push(`queue ${snap.slug}: ${doneCount}/${snap.rows.length} done`);
-		if (snap.frontier && snap.frontier !== "—") bits.push(`frontier ${snap.frontier}`);
+		const next =
+			snap.frontier && snap.frontier !== "—"
+				? theme.fg("dim", " · next ") + theme.fg("accent", snap.frontier)
+				: "";
+		const label = fit(snap.slug ?? "queue", narrow ? w - 12 : 24);
+		lines.push(
+			"  " +
+				theme.fg("muted", "⧉ ") +
+				theme.fg("muted", label) +
+				" " +
+				theme.bold(`${queueDone}/${snap.rows.length}`) +
+				theme.fg("muted", " done") +
+				next,
+		);
 	}
-	if (bits.length > 0) lines.push(`  ${bits.join(" · ")}`);
 
 	if (expanded) {
 		if (snap.rows.length > 0) {
-			lines.push("  ── tickets ──");
+			lines.push(rule("tickets", w, theme));
 			for (const r of snap.rows) {
 				const cur = r.id === snap.ticketId || snap.current === r.id;
-				const blocked = r.status === "open" && r.blockedBy !== "—" ? `  (blocked by ${r.blockedBy})` : "";
-				lines.push(`  ${statusGlyph(r.status, cur)} ${r.id} ${r.title}  ${r.status}${blocked}`);
+				let glyph: string;
+				if (cur || r.status === "in-progress") glyph = theme.fg("accent", "▶");
+				else if (r.status === "done") glyph = theme.fg("success", "✔");
+				else glyph = theme.fg("dim", "○");
+				const blocked =
+					r.status === "open" && r.blockedBy !== "—"
+						? theme.fg("dim", ` ⊘${r.blockedBy.replace(/\s+/g, "")}`)
+						: "";
+				const title = fit(`${r.id} ${r.title}`, w - 8);
+				const text = r.status === "done" ? theme.fg("dim", title) : cur ? theme.bold(title) : title;
+				lines.push(` ${glyph} ${text}${blocked}`);
 			}
 		}
 		if (snap.criteria.length > 0) {
-			lines.push(`  ── criteria (ticket ${snap.ticketId ?? "?"}) ──`);
+			lines.push(rule(snap.ticketId ? `criteria · ${snap.ticketId}` : "criteria", w, theme));
 			for (const c of snap.criteria) {
-				const marker = !c.done && snap.criterion && c.text.startsWith(snap.criterion) ? "  ← current" : "";
-				lines.push(`  [${c.done ? "x" : " "}] ${c.text}${marker}`);
+				const current = !c.done && snap.criterion !== undefined && c.text.startsWith(snap.criterion);
+				const glyph = c.done ? theme.fg("success", "✔") : current ? theme.fg("accent", "▸") : theme.fg("dim", "○");
+				const text = fit(c.text, w - 4);
+				lines.push(` ${glyph} ${c.done ? theme.fg("dim", text) : current ? theme.bold(text) : text}`);
 			}
 		}
 	}
 
-	return lines.map(clamp);
+	return lines.map((line) => truncAnsi(line, w));
+}
+
+// ── wiring ──────────────────────────────────────────────────────────────
+
+type WidgetFactory = (tui: unknown, theme: Theme) => { render(width: number): string[]; invalidate(): void };
+
+interface UiCtx {
+	hasUI: boolean;
+	ui: { setWidget(key: string, value?: string[] | WidgetFactory): void };
 }
 
 export default function (pi: ExtensionAPI) {
@@ -173,17 +287,27 @@ export default function (pi: ExtensionAPI) {
 	let watcher: fs.FSWatcher | undefined;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
-	const refresh = (ctx: { hasUI: boolean; ui: { setWidget(key: string, lines?: string[]): void } }) => {
+	const refresh = (ctx: UiCtx) => {
 		if (!ctx.hasUI) return;
 		if (hidden) {
 			ctx.ui.setWidget(WIDGET_KEY, undefined);
 			return;
 		}
 		const snap = collect(process.cwd());
-		ctx.ui.setWidget(WIDGET_KEY, snap ? render(snap, expanded) : undefined);
+		if (!snap) {
+			ctx.ui.setWidget(WIDGET_KEY, undefined);
+			return;
+		}
+		const wasExpanded = expanded;
+		ctx.ui.setWidget(WIDGET_KEY, (_tui, theme) => ({
+			render(width: number): string[] {
+				return renderLines(snap, wasExpanded, width, theme);
+			},
+			invalidate() {},
+		}));
 	};
 
-	const armWatcher = (ctx: Parameters<typeof refresh>[0]) => {
+	const armWatcher = (ctx: UiCtx) => {
 		if (watcher) return;
 		const dir = path.join(process.cwd(), ".scratch");
 		if (!fs.existsSync(dir)) return;
@@ -200,8 +324,8 @@ export default function (pi: ExtensionAPI) {
 
 	for (const event of ["session_start", "turn_start", "turn_end", "tool_execution_end"] as const) {
 		pi.on(event, async (_e, ctx) => {
-			refresh(ctx);
-			armWatcher(ctx);
+			refresh(ctx as unknown as UiCtx);
+			armWatcher(ctx as unknown as UiCtx);
 		});
 	}
 
@@ -217,7 +341,7 @@ export default function (pi: ExtensionAPI) {
 			if (arg === "hide") hidden = true;
 			else if (arg === "show") hidden = false;
 			else expanded = !expanded;
-			refresh(ctx);
+			refresh(ctx as unknown as UiCtx);
 		},
 	});
 }
