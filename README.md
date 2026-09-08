@@ -25,6 +25,8 @@ agents/skills/                 hand-authored skills, linked to ~/.agents/skills
 
 pi/agent/
   settings.json                permissions and packages (copied, not linked)
+  models.json                  model overrides (caps glm-5.3 max_tokens for
+                               OpenRouter's worst-case credit pre-auth)
   AGENTS.md                    working agreement, loaded into every session
   agents/hunk-reviewer.md      read-only second reviewer (pi-subagents)
   themes/                      terminal theme

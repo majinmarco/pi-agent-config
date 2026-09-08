@@ -169,6 +169,7 @@ done < "$REPO/skills-upstream.tsv"
 
 echo "==> agent files"
 link "$REPO/pi/agent/AGENTS.md" "$AGENT_HOME/AGENTS.md"
+link "$REPO/pi/agent/models.json" "$AGENT_HOME/models.json"
 for agent in "$REPO"/pi/agent/agents/*.md; do
 	[[ -e $agent ]] || continue
 	link "$agent" "$AGENT_HOME/agents/$(basename "$agent")"
