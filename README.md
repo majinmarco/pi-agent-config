@@ -40,6 +40,7 @@ pi/agent/
     perm-why.ts                one-line gpt-oss-20b explanation beside permission asks
     loop-status.ts             live mindful-loop widget, /loop-status panel,
                                and ticket autocomplete for /skill:mindful-loop
+    working-anim.ts            animated working indicator (/anim to switch)
 ```
 
 Four more extensions and one skill are installed from a clone rather than kept
@@ -167,6 +168,7 @@ invoke_skill(name=…, reload=true)  re-expand after compaction dropped it
 | `question-round.ts` | `question_round`: a whole round of questions as a tabbed wizard — one question on screen at a time, ■/□ progress, per-option descriptions and a ★ recommended marker, write-in escape everywhere, a review screen before submit, and optional per-question **exhibits** (preformatted monospace panels: ASCII diagrams, decision trees, comparison tables). Cancelling reports which questions were already answered. Serializes with `ask_user_question` on a shared UI lock. Written here from pi's documented `ctx.ui.custom()` API, starting from the MIT `questionnaire.ts` example that ships with pi | always on |
 | `prompt-snippets/` | `alt+s` / `/snippets`: toggle small behaviour rules onto the next message only — "verify, don't assume", "diagnose, don't fix", "delegate exploration". Resets after every send | always on, nothing active |
 | `custom-header.ts` | The startup header. `/builtin-header` restores pi's own | always on |
+| `working-anim.ts` | Replaces the streaming spinner with a themed animation — Larson scanner by default; `/anim breath\|orbit\|off\|default` to switch | always on |
 | `browser/` | `browser_goto`, `browser_eval`, `browser_console`, `browser_network`, `browser_fill`, `browser_click`, `browser_screenshot` — a real Chromium the agent can drive | **off**; `/browser on` |
 | `observational-memory` | Observers distil the conversation into a ledger; compaction renders it verbatim instead of asking a model to summarise; a consolidator promotes the oldest into durable `.memory/<session>/` files | **off**; `/om on` |
 
