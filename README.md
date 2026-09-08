@@ -42,6 +42,8 @@ pi/agent/
                                and ticket autocomplete for /skill:mindful-loop
     working-anim.ts            animated working indicator (/anim to switch)
     allow-cmd.ts               /allow — append bash allowlist rules from chat
+    hunk-flow.ts               /skill:hunk-review autopilot: opens a Hunk tmux
+                               pane if needed, auto-runs /hunk review after
 ```
 
 Four more extensions and one skill are installed from a clone rather than kept
@@ -171,6 +173,7 @@ invoke_skill(name=…, reload=true)  re-expand after compaction dropped it
 | `custom-header.ts` | The startup header. `/builtin-header` restores pi's own | always on |
 | `working-anim.ts` | Replaces the streaming spinner with a themed animation — Larson scanner by default; `/anim breath\|orbit\|off\|default` to switch | always on |
 | `allow-cmd.ts` | `/allow <cmd words>` appends a bash allow rule to settings.json (args permitted, shell metacharacters not); `/allow` lists, `/allow rm <n>` removes. Rules load at session_start, so changes apply next session; priority-10 denies always win | always on |
+| `hunk-flow.ts` | Arms on `/skill:hunk-review`: if the repo has no live Hunk session and pi is inside tmux, opens `hunk diff --watch` in a side pane and waits for the daemon to see it; when the response settles (agent_settled), dispatches `/hunk review` as if typed | always on |
 | `browser/` | `browser_goto`, `browser_eval`, `browser_console`, `browser_network`, `browser_fill`, `browser_click`, `browser_screenshot` — a real Chromium the agent can drive | **off**; `/browser on` |
 | `observational-memory` | Observers distil the conversation into a ledger; compaction renders it verbatim instead of asking a model to summarise; a consolidator promotes the oldest into durable `.memory/<session>/` files | **off**; `/om on` |
 
