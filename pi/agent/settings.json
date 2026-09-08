@@ -108,6 +108,28 @@
         "action": "deny"
       },
       {
+        "message": "Loop bookkeeping (tickets, queue, state) under .scratch needs no approval",
+        "priority": 5,
+        "match": {
+          "tool": "write",
+          "params": {
+            "path": "(^|/)\\.scratch/"
+          }
+        },
+        "action": "allow"
+      },
+      {
+        "message": "Loop bookkeeping (tickets, queue, state) under .scratch needs no approval",
+        "priority": 5,
+        "match": {
+          "tool": "edit",
+          "params": {
+            "path": "(^|/)\\.scratch/"
+          }
+        },
+        "action": "allow"
+      },
+      {
         "match": {
           "tool": "bash"
         },
@@ -132,7 +154,7 @@
     "npm:@pi-lab/permissions",
     "npm:pi-subagents",
     "git:github.com/amosblomqvist/pi-observational-memory",
-    "npm:pi-better-edit"
+    "../../development/pi-better-edit"
   ],
   "lastChangelogVersion": "0.84.4",
   "theme": "dark",

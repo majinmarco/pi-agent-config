@@ -33,6 +33,7 @@ pi/agent/
     model-tiers.ts             SUPER/SUB model tiers and the /tier command
     question-round.ts          the question_round wizard UI (used by grilling)
     custom-header.ts           startup header
+    loop-status.ts             live mindful-loop widget and /loop-status panel
 ```
 
 Four more extensions and one skill are installed from a clone rather than kept
@@ -113,6 +114,11 @@ which is versioned here:
 [`pi-better-edit`](https://github.com/Rianico/pi-better-edit) (MIT), which
 replaces the built-in `read`/`edit` tools with hash-anchored versions (plus
 `read_skill` for plain skill-file reads and a persisted `undo_last_edit`).
+pi-better-edit is installed from a local checkout at
+`~/development/pi-better-edit` (branch `bun-sqlite-compat`), not npm: the
+published package imports `node:sqlite`, which pi's Bun-based runtime does
+not provide, so the checkout patches in a `bun:sqlite` fallback until that
+lands upstream.
 
 Credentials, sessions, and the model cache are gitignored. `auth.json` in
 particular must never land here.
