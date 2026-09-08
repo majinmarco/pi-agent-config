@@ -4,6 +4,9 @@
       "modelOverrides": {
         "z-ai/glm-5.3": {
           "maxTokens": 65536
+        },
+        "deepseek/deepseek-v4-pro-0813": {
+          "maxTokens": 65536
         }
       }
     }

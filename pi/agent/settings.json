@@ -206,7 +206,7 @@
   "theme": "dark",
   "hideThinkingBlock": true,
   "modelTiers": {
-    "super": "openrouter/z-ai/glm-5.3",
+    "super": "openrouter/deepseek/deepseek-v4-pro-0813",
     "sub": "openrouter/z-ai/glm-5.3-flash"
   },
   "subagents": {
