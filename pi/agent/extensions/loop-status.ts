@@ -17,6 +17,11 @@
  * (all tickets + all criteria); `/loop-status hide` clears the widget for
  * this session, `/loop-status show` brings it back. Refreshes on turn/tool
  * events and on fs.watch of .scratch.
+ *
+ * Typing `/skill:mindful-loop ` also gets ticket autocomplete: every
+ * non-done ticket under .scratch/*​/issues/ is suggested (in-progress
+ * first, then unblocked open, then blocked), and accepting one inserts
+ * its full path.
  */
 
 import * as fs from "node:fs";
@@ -117,6 +122,90 @@ function collect(cwd: string): Snapshot | undefined {
 	const anything = snap.phase || snap.rows.length > 0 || snap.criteria.length > 0;
 	return anything ? snap : undefined;
 }
+
+// ── ticket autocomplete ─────────────────────────────────────────────────
+
+interface TicketEntry {
+	path: string; // relative, as mindful-loop expects it
+	id: string;
+	title: string;
+	status: string;
+	blockedBy: string;
+	slug: string;
+}
+
+function listTickets(cwd: string): TicketEntry[] {
+	const out: TicketEntry[] = [];
+	const scratch = path.join(cwd, ".scratch");
+	let slugs: string[];
+	try {
+		slugs = fs
+			.readdirSync(scratch, { withFileTypes: true })
+			.filter((e) => e.isDirectory())
+			.map((e) => e.name);
+	} catch {
+		return out;
+	}
+	for (const slug of slugs) {
+		let files: string[];
+		try {
+			files = fs
+				.readdirSync(path.join(scratch, slug, "issues"))
+				.filter((f) => f.endsWith(".md"))
+				.sort();
+		} catch {
+			continue;
+		}
+		for (const f of files) {
+			const text = readIfFile(path.join(scratch, slug, "issues", f));
+			if (!text) continue;
+			const h = text.match(/^#\s*(\w+):\s*(.+)$/m);
+			out.push({
+				path: `.scratch/${slug}/issues/${f}`,
+				id: h?.[1] ?? f.replace(/\.md$/, ""),
+				title: h?.[2]?.trim() ?? f,
+				status: firstMatch(text, /^\*\*Status:\*\*\s*(.+)$/m) ?? "open",
+				blockedBy: firstMatch(text, /^\*\*Blocked by:\*\*\s*(.+)$/m) ?? "",
+			slug,
+			});
+		}
+	}
+	return out;
+}
+
+/** Runnable tickets ranked: in-progress, then unblocked open, then blocked open. */
+function ticketSuggestions(cwd: string, partial: string) {
+	const tickets = listTickets(cwd);
+	const doneBySlug = new Map<string, Set<string>>();
+	for (const t of tickets) {
+		if (t.status === "done") {
+			if (!doneBySlug.has(t.slug)) doneBySlug.set(t.slug, new Set());
+			doneBySlug.get(t.slug)!.add(t.id);
+		}
+	}
+	const blocked = (t: TicketEntry): boolean => {
+		const ids = t.blockedBy.match(/\b\w*\d+\w*\b/g) ?? [];
+		return ids.some((id) => !doneBySlug.get(t.slug)?.has(id));
+	};
+	const needle = partial.toLowerCase();
+	return tickets
+		.filter((t) => t.status !== "done")
+		.filter((t) => !needle || `${t.path} ${t.id} ${t.title}`.toLowerCase().includes(needle))
+		.map((t) => ({ t, rank: t.status === "in-progress" ? 0 : blocked(t) ? 2 : 1 }))
+		.sort((a, b) => a.rank - b.rank || a.t.path.localeCompare(b.t.path))
+		.map(({ t, rank }) => ({
+			value: t.path,
+			label: `${t.id} ${t.title}`,
+			description:
+				rank === 0
+					? `${t.slug} · in-progress`
+					: rank === 2
+						? `${t.slug} · blocked by ${t.blockedBy}`
+						: `${t.slug} · open`,
+		}));
+}
+
+const MINDFUL_ARG = /^\/skill:mindful-loop\s+(\S*)$/;
 
 // ── text utilities ──────────────────────────────────────────────────────
 // Styled strings carry ANSI escapes, so width math walks visible chars and
@@ -278,7 +367,22 @@ type WidgetFactory = (tui: unknown, theme: Theme) => { render(width: number): st
 
 interface UiCtx {
 	hasUI: boolean;
-	ui: { setWidget(key: string, value?: string[] | WidgetFactory): void };
+	ui: {
+		setWidget(key: string, value?: string[] | WidgetFactory): void;
+		addAutocompleteProvider?(factory: (current: AutocompleteProvider) => AutocompleteProvider): void;
+	};
+}
+
+interface AutocompleteProvider {
+	triggerCharacters?: string[];
+	getSuggestions(
+		lines: string[],
+		line: number,
+		col: number,
+		options?: unknown,
+	): Promise<{ prefix: string; items: { value: string; label: string; description?: string }[] } | undefined> | { prefix: string; items: { value: string; label: string; description?: string }[] } | undefined;
+	applyCompletion(lines: string[], line: number, col: number, item: unknown, prefix: string): unknown;
+	shouldTriggerFileCompletion?(lines: string[], line: number, col: number): boolean;
 }
 
 export default function (pi: ExtensionAPI) {
@@ -286,6 +390,34 @@ export default function (pi: ExtensionAPI) {
 	let hidden = false;
 	let watcher: fs.FSWatcher | undefined;
 	let timer: ReturnType<typeof setTimeout> | undefined;
+	let autocompleteArmed = false;
+
+	const armAutocomplete = (ctx: UiCtx) => {
+		if (autocompleteArmed || !ctx.ui.addAutocompleteProvider) return;
+		autocompleteArmed = true;
+		ctx.ui.addAutocompleteProvider((current) => ({
+			// A space is what follows the command name, so it opens the menu;
+			// while the menu is open, further keystrokes re-query and filter.
+			triggerCharacters: [...(current.triggerCharacters ?? []), " "],
+			getSuggestions(lines, line, col, options) {
+				const beforeCursor = (lines[line] ?? "").slice(0, col);
+				const m = line === 0 ? beforeCursor.match(MINDFUL_ARG) : null;
+				if (!m) return current.getSuggestions(lines, line, col, options);
+				const items = ticketSuggestions(process.cwd(), m[1] ?? "");
+				if (items.length === 0) return current.getSuggestions(lines, line, col, options);
+				return { prefix: m[1] ?? "", items };
+			},
+			applyCompletion(lines, line, col, item, prefix) {
+				return current.applyCompletion(lines, line, col, item, prefix);
+			},
+			shouldTriggerFileCompletion(lines, line, col) {
+				// Ticket suggestions replace path completion inside the command.
+				const beforeCursor = (lines[line] ?? "").slice(0, col);
+				if (line === 0 && MINDFUL_ARG.test(beforeCursor)) return false;
+				return current.shouldTriggerFileCompletion?.(lines, line, col) ?? true;
+			},
+		}));
+	};
 
 	const refresh = (ctx: UiCtx) => {
 		if (!ctx.hasUI) return;
@@ -326,6 +458,9 @@ export default function (pi: ExtensionAPI) {
 		pi.on(event, async (_e, ctx) => {
 			refresh(ctx as unknown as UiCtx);
 			armWatcher(ctx as unknown as UiCtx);
+			if (event === "session_start" && (ctx as unknown as UiCtx).hasUI) {
+				armAutocomplete(ctx as unknown as UiCtx);
+			}
 		});
 	}
 
