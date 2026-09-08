@@ -41,6 +41,7 @@ pi/agent/
     loop-status.ts             live mindful-loop widget, /loop-status panel,
                                and ticket autocomplete for /skill:mindful-loop
     working-anim.ts            animated working indicator (/anim to switch)
+    allow-cmd.ts               /allow — append bash allowlist rules from chat
 ```
 
 Four more extensions and one skill are installed from a clone rather than kept
@@ -169,6 +170,7 @@ invoke_skill(name=…, reload=true)  re-expand after compaction dropped it
 | `prompt-snippets/` | `alt+s` / `/snippets`: toggle small behaviour rules onto the next message only — "verify, don't assume", "diagnose, don't fix", "delegate exploration". Resets after every send | always on, nothing active |
 | `custom-header.ts` | The startup header. `/builtin-header` restores pi's own | always on |
 | `working-anim.ts` | Replaces the streaming spinner with a themed animation — Larson scanner by default; `/anim breath\|orbit\|off\|default` to switch | always on |
+| `allow-cmd.ts` | `/allow <cmd words>` appends a bash allow rule to settings.json (args permitted, shell metacharacters not); `/allow` lists, `/allow rm <n>` removes. Rules load at session_start, so changes apply next session; priority-10 denies always win | always on |
 | `browser/` | `browser_goto`, `browser_eval`, `browser_console`, `browser_network`, `browser_fill`, `browser_click`, `browser_screenshot` — a real Chromium the agent can drive | **off**; `/browser on` |
 | `observational-memory` | Observers distil the conversation into a ledger; compaction renders it verbatim instead of asking a model to summarise; a consolidator promotes the oldest into durable `.memory/<session>/` files | **off**; `/om on` |
 
