@@ -194,11 +194,10 @@ export default function planApproval(pi: ExtensionAPI) {
 						addPrefixed(" ", theme.fg("accent", theme.bold(title ?? "Plan approval")));
 						lines.push("");
 
+						const numWidth = String(plan.length).length;
 						for (let i = 0; i < plan.length; i++) {
-							const body = truncateToWidth(plan[i], Math.max(1, renderWidth - 8));
-							lines.push(
-								truncateToWidth(`  ${theme.fg("dim", "│")} ${theme.fg("muted", String(i + 1))} ${theme.fg("text", body)}`, renderWidth),
-							);
+							const num = String(i + 1).padStart(numWidth);
+							addPrefixed(`  ${theme.fg("dim", "│")} ${theme.fg("muted", num)} `, theme.fg("text", plan[i]));
 						}
 
 						if (files.length > 0) {
