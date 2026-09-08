@@ -109,7 +109,10 @@ somebody else's git clone is a bad place to edit anything.
 Real pi packages are installed with `pi install` and recorded in `settings.json`,
 which is versioned here:
 [`observational-memory`](https://github.com/amosblomqvist/pi-observational-memory)
-(MIT), `pi-hunk`, `@pi-lab/permissions`, `pi-subagents`.
+(MIT), `pi-hunk`, `@pi-lab/permissions`, `pi-subagents`, and
+[`pi-better-edit`](https://github.com/Rianico/pi-better-edit) (MIT), which
+replaces the built-in `read`/`edit` tools with hash-anchored versions (plus
+`read_skill` for plain skill-file reads and a persisted `undo_last_edit`).
 
 Credentials, sessions, and the model cache are gitignored. `auth.json` in
 particular must never land here.

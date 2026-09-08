@@ -12,6 +12,14 @@
         "action": "allow"
       },
       {
+        "message": "Reading skill files needs no approval (pi-better-edit's plain read)",
+        "priority": 5,
+        "match": {
+          "tool": "read_skill"
+        },
+        "action": "allow"
+      },
+      {
         "message": "Read-only inspection commands (ls, cat, find, rg, ...)",
         "priority": 5,
         "match": {
@@ -123,7 +131,8 @@
     "npm:@roodriigoooo/pi-hunk",
     "npm:@pi-lab/permissions",
     "npm:pi-subagents",
-    "git:github.com/amosblomqvist/pi-observational-memory"
+    "git:github.com/amosblomqvist/pi-observational-memory",
+    "npm:pi-better-edit"
   ],
   "lastChangelogVersion": "0.84.4",
   "theme": "dark",

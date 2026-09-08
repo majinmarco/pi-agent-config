@@ -1,6 +1,6 @@
 ---
 name: mindful-loop
-description: User-invoked orchestrator for ONE commit-sized change with the human deciding at every step. Invoke with /skill:mindful-loop. Composes grilling, diagnosing-bugs, and tdd through invoke_skill. Never more than one slice; never commits.
+description: User-invoked orchestrator for ONE commit-sized change — a whole ticket when driven by a ticket-loop queue — with the human deciding at every step. Invoke with /skill:mindful-loop. Composes grilling, diagnosing-bugs, and tdd through invoke_skill. One ticket per run; never commits.
 disable-model-invocation: true
 ---
 
@@ -26,9 +26,11 @@ After every STOP, write to that file, in this shape, before ending the turn:
 ```
 Phase: <number> — waiting on <what>
 Ticket: <path to the ticket file, when a ticket-loop queue is driving this run>
+Criterion: <the acceptance criterion currently in progress, ticket runs only>
 Plan: <the six lines approved in phase 2>
 Files: <the approved file list>
-Test: <path::name of the approved test, once phase 4 is done>
+Findings: <phase 3's report, once phase 3 is done>
+Test: <path::name of the current approved test, once phase 4 is done>
 ```
 
 The loop outlives your context window. This file is the only thing that does.
@@ -40,11 +42,17 @@ two changes. Ask which one goes first. STOP.
 
 If invoked with a ticket file path (/skill:mindful-loop
 .scratch/<slug>/issues/NN-<name>.md), read the ticket instead of asking.
-The change is its first unchecked acceptance criterion, framed back in one
-sentence for a yes. Record the path as `Ticket:` in the state file, set
-the ticket's `**Status:**` to `in-progress`, and point `Current:` in its
-`queue.md` at it. The one-sentence test still applies to the criterion:
-a criterion that is two changes goes back to the user to split. STOP.
+The change is the whole ticket — one run, one commit. Its unchecked
+acceptance criteria are this run's slices, worked in order in phases 4–5.
+Record the path as `Ticket:` in the state file, set the ticket's
+`**Status:**` to `in-progress`, and point `Current:` in its `queue.md` at it.
+
+The one-sentence test applies to the ticket, not to each criterion: frame
+its Description back in one sentence. A ticket you cannot frame without
+"and" joining two behaviours is two tickets — STOP and send it back to
+/skill:ticket-loop for a split. Otherwise do NOT stop here: carry the
+framing into phase 2's first round and get the yes there. The framing STOP
+and the grill's first round cost one turn, not two.
 
 If what comes back is a feature rather than a commit — more than one slice,
 or the user cannot state it without listing steps — STOP and say: "This is
@@ -80,6 +88,14 @@ open branches past them.
 - what "done" looks like (observable, not "works")
 - what is out of scope
 
+Ticket runs: the ticket already answers three of the five — files
+(**Impacted files**), approach (**Description**), "done" (the acceptance
+criteria). The user wrote and reviewed that file; do not re-ask what it
+states. The frontier is the gaps only: the seams the tests sit at, what is
+out of scope, and anything the ticket leaves genuinely unclear. Open with
+the phase 1 framing plus these questions in one round; most ticket runs
+should close in that round.
+
 Then write the plan back in six lines or fewer, save it to the state file,
 and ask for a yes. STOP.
 
@@ -93,6 +109,13 @@ if they exist, plus whatever you must grep to answer "is something already
 doing this?". Report anything that contradicts the plan — an existing helper,
 a different pattern already in use, hidden coupling — in five lines or fewer.
 Do not edit anything in this phase.
+
+When a queue drives this run, keep a running `.scratch/<slug>/findings.md`:
+read it before reading anything else — earlier tickets' passes are verified
+context you do not re-derive; re-read only what this plan touches — and
+append what this pass learned that later tickets will need. Save the report
+as `Findings:` in the state file either way.
+
 If anything contradicts the plan: STOP for a decision. Otherwise continue.
 
 ## 4. Test first
@@ -102,11 +125,16 @@ If anything contradicts the plan: STOP for a decision. Otherwise continue.
 - The seams were agreed in phase 2. Do not re-ask for them.
 - Ignore its reference to a `codebase-design` skill. It is not installed here.
 
-Write ONE failing test for the first vertical slice, at an agreed seam.
-Run it. Show the test in full AND show it failing — a test asserted to be
-red but never executed is the failure this phase exists to prevent. STOP.
-The user approves it, edits it, or rewrites it. Do not touch implementation
-until the test has been explicitly approved.
+Phases 4 and 5 repeat once per slice. In a ticket run a slice is one
+unchecked acceptance criterion, taken in order; a prose run has exactly
+one slice. Invoke tdd once, on the first pass.
+
+Write ONE failing test for the current slice, at an agreed seam. Run it.
+Show the test in full AND show it failing — a test asserted to be red but
+never executed is the failure this phase exists to prevent. STOP.
+The user approves it, edits it, or rewrites it. Approval of this test
+authorizes exactly this slice's implementation, nothing more. Do not touch
+implementation until the test has been explicitly approved.
 
 If their rewrite no longer checks the plan's "done", return to phase 2.
 
@@ -122,10 +150,16 @@ Then run the approved test and show it green, plus the fast checks the
 project already has — typecheck, the test file. Show the commands and their
 output. If anything is red, fix it or STOP. Never hand off red.
 
+In a ticket run, tick the criterion this slice satisfied in the ticket file
+(one small edit; the file is git-ignored, so it does not touch the
+changeset) and update `Criterion:` in the state file. Unchecked criteria
+remain → return to phase 4 for the next one; its failing-test STOP is the
+next ask, so do not add one here. All ticked → phase 6.
+
 ## 6. Hand off
 
-Say what changed in one sentence. Then say exactly: `Ready for /hunk review.`
-STOP.
+Say what changed in one sentence — the whole ticket, in a ticket run. Then
+say exactly: `Ready for /hunk review.` STOP.
 
 From here, do not touch the working tree. Hunk fingerprints the changeset at
 review time; any edit flips the checkpoint to re-review-due and `/hunk submit`
@@ -161,17 +195,15 @@ When every note is addressed, return to phase 6.
 You reach this phase only when the user says the review is approved — an
 empty submission starts no turn, so you will not be told automatically.
 
-State the test that now passes, the files touched, and `Ready to commit.`
+State the tests that now pass, the files touched, and `Ready to commit.`
 
-If the state file names a ticket, also advance the queue — these files are
-git-ignored, so none of this touches the changeset:
+If the state file names a ticket, also advance the queue — the criteria were
+already ticked as their slices landed, so what remains is:
 
-- Tick the acceptance criteria this change satisfied, in the ticket file.
-- All ticked → set the ticket's `**Status:**` to `done` and update its
-  `queue.md` (status, Current, Frontier). Statuses are exactly
+- Set the ticket's `**Status:**` to `done` and update its `queue.md`
+  (status, Current, Frontier). Statuses are exactly
   `open | in-progress | done`; never write anything else.
 - End with one line naming the next command, which is the user's to type:
-  - criteria remain → `Ticket NN continues. Next: /skill:mindful-loop <same path>`
   - frontier non-empty → `Ticket NN complete. Next: /skill:mindful-loop <path>`
   - queue empty → `All tickets in <slug> are done.`
 
@@ -181,7 +213,10 @@ Then STOP.
 
 - Never commit. `git commit` is only `ask` in settings, not denied, so this
   rule is the only thing stopping you.
-- Never start slice two without being asked.
+- An approved failing test authorizes exactly one slice. Never write
+  implementation past the approved test, and never touch work beyond the
+  current ticket — the next ticket starts only when the user types its
+  command.
 - Never work around `invoke_skill` refusing a skill. A refusal means that
   skill is the user's to invoke — `implement` in particular ends by
   committing and by substituting `/code-review` for the human, which is the
