@@ -129,6 +129,16 @@ export default function planApproval(pi: ExtensionAPI) {
 						done({ ...base, decision: "objection", objection: text });
 					};
 
+					function activate() {
+						if (ACTIONS[actionIndex].key === "approve") {
+							done({ ...base, decision: "approved" });
+						} else {
+							editMode = true;
+							editor.setText("");
+							refresh();
+						}
+					}
+
 					function handleInput(data: string) {
 						if (editMode) {
 							if (matchesKey(data, Key.escape)) {
@@ -151,14 +161,16 @@ export default function planApproval(pi: ExtensionAPI) {
 							refresh();
 							return;
 						}
+						// Number shortcuts: digit N triggers action N directly.
+						if (/^[1-9]$/.test(data)) {
+							const idx = Number(data) - 1;
+							if (idx >= ACTIONS.length) return;
+							actionIndex = idx;
+							activate();
+							return;
+						}
 						if (matchesKey(data, Key.enter)) {
-							if (ACTIONS[actionIndex].key === "approve") {
-								done({ ...base, decision: "approved" });
-							} else {
-								editMode = true;
-								editor.setText("");
-								refresh();
-							}
+							activate();
 							return;
 						}
 						if (matchesKey(data, Key.escape)) {
@@ -213,7 +225,7 @@ export default function planApproval(pi: ExtensionAPI) {
 							const focused = i === actionIndex && !editMode;
 							const prefix = focused ? theme.fg("accent", "> ") : "  ";
 							const color = focused ? "accent" : "text";
-							addPrefixed(prefix, theme.fg(color, `${focused ? "●" : "○"} ${ACTIONS[i].label}`));
+							addPrefixed(prefix, theme.fg(color, `${focused ? "●" : "○"} ${i + 1}. ${ACTIONS[i].label}`));
 							addPrefixed("     ", theme.fg("muted", ACTIONS[i].description));
 						}
 
@@ -228,7 +240,7 @@ export default function planApproval(pi: ExtensionAPI) {
 						lines.push("");
 						addPrefixed(
 							" ",
-							theme.fg("dim", editMode ? "Enter submit objection • Esc back" : "↑↓ move • Enter choose • Esc cancel"),
+							theme.fg("dim", editMode ? "Enter submit objection • Esc back" : "1/2 choose • ↑↓+Enter • Esc cancel"),
 						);
 						lines.push(theme.fg("accent", "─".repeat(renderWidth)));
 

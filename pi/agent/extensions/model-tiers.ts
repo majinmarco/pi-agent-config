@@ -14,9 +14,13 @@
  *      both the user typing /skill:mindful-loop and invoke_skill dispatching
  *      it, because both pass through pi's `input` event before expansion.
  *      `tier: sub` in frontmatter is an active DOWNSHIFT: invoking that
- *      skill switches the session to the SUB model (mindful-loop runs on
- *      SUB even right after a SUPER ticket-loop). Composed skills (tdd
- *      inside mindful-loop) still run in the invoking session's model.
+ *      skill switches the session to the SUB model. `model:
+ *      provider/id[:thinking]` in frontmatter pins the skill to that exact
+ *      model instead, bypassing the tiers — mindful-loop runs
+ *      openrouter/z-ai/glm-5.3:high this way, without dragging the SUB tier
+ *      (and with it subagents.defaultModel) up to the big model. Composed
+ *      skills (tdd inside mindful-loop) still run in the invoking
+ *      session's model.
  *
  * Effort: SUPER runs at max, SUB at medium (high when the model has no
  * medium) — but only when the model's API exposes that level, per pi's
@@ -183,17 +187,27 @@ function frontmatter(text: string): string | null {
 	return match ? match[1] : null;
 }
 
+/** Where a skill routes the session: a tier, or an exact model spec. */
+interface SkillRouting {
+	tier?: Tier;
+	/** Explicit `model: provider/id[:thinking]` frontmatter — wins over tier. */
+	spec?: string;
+}
+
 /**
- * A skill's tier. Explicit `tier:` frontmatter wins; otherwise a skill whose
- * body mentions invoke_skill composes other skills, which is orchestration.
+ * A skill's routing. Explicit `model:` frontmatter pins an exact model and
+ * wins; `tier:` picks a tier; otherwise a skill whose body mentions
+ * invoke_skill composes other skills, which is orchestration → SUPER.
  */
-function skillTier(path: string): Tier | null {
+function skillRouting(path: string): SkillRouting | null {
 	try {
 		const text = readFileSync(path, "utf8");
 		const block = frontmatter(text);
+		const model = block && /^model:[ \t]*(\S+)[ \t]*$/im.exec(block);
+		if (model) return { spec: model[1] };
 		const declared = block && /^tier:[ \t]*(super|sub)[ \t]*$/im.exec(block);
-		if (declared) return declared[1] as Tier;
-		return text.includes("invoke_skill") ? "super" : null;
+		if (declared) return { tier: declared[1] as Tier };
+		return text.includes("invoke_skill") ? { tier: "super" } : null;
 	} catch {
 		return null;
 	}
@@ -229,7 +243,7 @@ export default function (pi: ExtensionAPI) {
 		return pi
 			.getCommands()
 			.filter((c) => c.source === "skill" && c.sourceInfo?.path)
-			.filter((c) => skillTier(c.sourceInfo!.path!) === "super")
+			.filter((c) => skillRouting(c.sourceInfo!.path!)?.tier === "super")
 			.map((c) => c.name.replace(/^skill:/, "").split(":")[0]);
 	}
 
@@ -318,30 +332,30 @@ export default function (pi: ExtensionAPI) {
 			.getCommands()
 			.find((c) => c.source === "skill" && (c.name === `skill:${name}` || c.name.startsWith(`skill:${name}:`)));
 		const path = command?.sourceInfo?.path;
-		const tier = path ? skillTier(path) : null;
-		if (!tier) return { action: "continue" as const };
+		const routing = path ? skillRouting(path) : null;
+		if (!routing) return { action: "continue" as const };
 
-		// `tier: super` switches the session up; `tier: sub` switches it DOWN,
-		// so a mindful-loop run after a SUPER ticket-loop lands back on SUB.
-		const spec = tierSpec(readSettings(), tier);
+		// `tier: super` switches the session up; `tier: sub` switches it DOWN;
+		// `model: provider/id[:thinking]` pins the skill to that exact model,
+		// bypassing the tiers (mindful-loop runs glm-5.3:high this way).
+		const spec = routing.spec ?? tierSpec(readSettings(), routing.tier!);
+		const badge = routing.spec ? `skill model` : `${routing.tier!.toUpperCase()} tier`;
 		const resolved = resolveSpec(spec, ctx);
 		if (typeof resolved === "string") {
-			notify(ctx, `${tier.toUpperCase()} tier ${resolved} Staying on ${ctx.model?.id ?? "current model"}.`, "warning");
+			notify(ctx, `${badge} ${resolved} Staying on ${ctx.model?.id ?? "current model"}.`, "warning");
 			return { action: "continue" as const };
 		}
+		const effort = routing.tier ? tierEffort(routing.tier, resolved) : resolved.thinking;
 		const alreadyOn = ctx.model && `${ctx.model.provider}/${ctx.model.id}` === `${resolved.model.provider}/${resolved.model.id}`;
-		if (!alreadyOn) {
-			if (!(await pi.setModel(resolved.model))) {
-				notify(ctx, `${tier.toUpperCase()} switch failed: no API key for ${resolved.canonical}.`, "warning");
-				return { action: "continue" as const };
-			}
-			const effort = tierEffort(tier, resolved);
-			if (effort) pi.setThinkingLevel(effort);
-			notify(
-				ctx,
-				`Skill "${name}" → ${tier.toUpperCase()} model (${resolved.canonical}${effort ? `, effort ${effort}` : ""})`,
-				"info",
-			);
+		if (!alreadyOn && !(await pi.setModel(resolved.model))) {
+			notify(ctx, `${badge} switch failed: no API key for ${resolved.canonical}.`, "warning");
+			return { action: "continue" as const };
+		}
+		// An explicit :suffix re-applies even when the model already matches, so
+		// the effort still lands after e.g. a SUPER (max effort) ticket-loop.
+		if (effort && (!alreadyOn || routing.spec)) pi.setThinkingLevel(effort);
+		if (!alreadyOn || (routing.spec && effort)) {
+			notify(ctx, `Skill "${name}" → ${resolved.canonical}${effort ? ` (effort ${effort})` : ""}`, "info");
 		}
 		return { action: "continue" as const };
 	});

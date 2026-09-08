@@ -2,7 +2,7 @@
 name: mindful-loop
 description: User-invoked orchestrator for ONE commit-sized change — a whole ticket when driven by a ticket-loop queue. The human decides scope and reviews the diff; testing runs on autopilot. Invoke with /skill:mindful-loop. Composes grilling, diagnosing-bugs, and tdd through invoke_skill. One ticket per run; never commits.
 disable-model-invocation: true
-tier: sub
+model: openrouter/z-ai/glm-5.3:high
 ---
 
 # Mindful loop

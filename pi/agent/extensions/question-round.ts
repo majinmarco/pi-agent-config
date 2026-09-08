@@ -372,9 +372,9 @@ export default function questionRound(pi: ExtensionAPI) {
 
 						const opt = opts[optionIndex];
 
-						if (q.multiSelect && matchesKey(data, Key.space)) {
-							if (opt.isOther || opt.isWriteIn) {
-								const m = toggledFor(q);
+						function toggleOption(target: RenderOption, index: number) {
+							const m = toggledFor(q!);
+							if (target.isOther || target.isWriteIn) {
 								if (m.has("__custom__")) {
 									m.delete("__custom__");
 									refresh();
@@ -385,10 +385,39 @@ export default function questionRound(pi: ExtensionAPI) {
 								}
 								return;
 							}
-							const m = toggledFor(q);
-							if (m.has(opt.value)) m.delete(opt.value);
-							else m.set(opt.value, { value: opt.value, label: opt.label, index: optionIndex + 1, wasCustom: false });
+							if (m.has(target.value)) m.delete(target.value);
+							else m.set(target.value, { value: target.value, label: target.label, index: index + 1, wasCustom: false });
 							refresh();
+						}
+
+						// Number shortcuts: digit N focuses option N and acts on it —
+						// answers it (single-select), toggles it (multi-select), or
+						// opens the write-in editor for an Other/write-in entry.
+						if (/^[1-9]$/.test(data)) {
+							const idx = Number(data) - 1;
+							if (idx >= opts.length) return;
+							const target = opts[idx];
+							optionIndex = idx;
+							if (q.multiSelect) {
+								toggleOption(target, idx);
+								return;
+							}
+							if (target.isOther || target.isWriteIn) {
+								editMode = true;
+								editor.setText(customSelectionOf(q)?.label || "");
+								refresh();
+								return;
+							}
+							answers.set(q.id, {
+								id: q.id,
+								selections: [{ value: target.value, label: target.label, index: idx + 1, wasCustom: false }],
+							});
+							advance();
+							return;
+						}
+
+						if (q.multiSelect && matchesKey(data, Key.space)) {
+							toggleOption(opt, optionIndex);
 							return;
 						}
 
@@ -529,7 +558,7 @@ export default function questionRound(pi: ExtensionAPI) {
 										? custom != null
 										: answers.get(q.id)?.selections.some((s) => !s.wasCustom && s.value === opt.value) === true;
 								const marker = q.multiSelect ? (checked ? "[x]" : "[ ]") : checked ? "●" : " ";
-								let label = isCustomEntry ? opt.label : `${i + 1}. ${opt.label}`;
+								let label = `${i + 1}. ${opt.label}`;
 								if (opt.recommended) label += " ★ recommended";
 								if (isCustomEntry && custom) label += ` — ${custom.label}`;
 								const prefix = focused ? theme.fg("accent", "> ") : "  ";
@@ -555,8 +584,8 @@ export default function questionRound(pi: ExtensionAPI) {
 							: currentTab === questions.length
 								? "Tab/←→ questions • Enter submit • Esc cancel round"
 								: q?.multiSelect
-									? "Tab/←→ questions • ↑↓ move • Space toggle • Enter confirm • Esc cancel round"
-									: "Tab/←→ questions • ↑↓ move • Enter answer • Esc cancel round";
+									? "Tab/←→ questions • 1-9/Space toggle • Enter confirm • Esc cancel round"
+									: "Tab/←→ questions • 1-9 answer • ↑↓+Enter • Esc cancel round";
 						addPrefixed(" ", theme.fg("dim", help));
 						lines.push(theme.fg("accent", "─".repeat(renderWidth)));
 
