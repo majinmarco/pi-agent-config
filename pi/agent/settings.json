@@ -20,6 +20,41 @@
         "action": "allow"
       },
       {
+        "message": "Read-only built-in tools need no approval",
+        "priority": 5,
+        "match": {
+          "tool": "grep"
+        },
+        "action": "allow"
+      },
+      {
+        "message": "Read-only built-in tools need no approval",
+        "priority": 5,
+        "match": {
+          "tool": "find"
+        },
+        "action": "allow"
+      },
+      {
+        "message": "Read-only built-in tools need no approval",
+        "priority": 5,
+        "match": {
+          "tool": "ls"
+        },
+        "action": "allow"
+      },
+      {
+        "message": "Test runs (optionally chained after cd/sed -n/echo, piped to tail/head/grep)",
+        "priority": 5,
+        "match": {
+          "tool": "bash",
+          "params": {
+            "command": "^\\s*((cd|ls|cat|head|tail|wc|stat|grep|rg|echo)\\s+[^;|&`$<>]*&&\\s*|sed\\s+-n\\s+'[^']*'\\s+[\\w./-]+\\s*&&\\s*)*(timeout\\s+\\d+m?\\s+)?(uv\\s+run\\s+|npm\\s+(run\\s+)?|pnpm\\s+(run\\s+)?|cargo\\s+|bun\\s+)?(pytest\\b|test(s)?\\b|vitest\\s+run\\b|python3?\\s+-m\\s+[\\w.]*tests?[\\w.]*)[^;|&`$<>]*(2>&1)?\\s*(\\|\\s*(tail|head|grep|wc)\\s+[^;|&`$<>]*)?$"
+          }
+        },
+        "action": "allow"
+      },
+      {
         "message": "Read-only inspection commands (ls, cat, find, rg, ...)",
         "priority": 5,
         "match": {

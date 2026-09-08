@@ -13,9 +13,10 @@
  *      that calls other skills) — the session switches to SUPER. That covers
  *      both the user typing /skill:mindful-loop and invoke_skill dispatching
  *      it, because both pass through pi's `input` event before expansion.
- *      `tier: sub` in frontmatter opts a skill out. The switch is one-way:
- *      nothing auto-drops back, because composed skills (tdd inside
- *      mindful-loop) run in the orchestrator's session on purpose.
+ *      `tier: sub` in frontmatter is an active DOWNSHIFT: invoking that
+ *      skill switches the session to the SUB model (mindful-loop runs on
+ *      SUB even right after a SUPER ticket-loop). Composed skills (tdd
+ *      inside mindful-loop) still run in the invoking session's model.
  *
  * Effort: SUPER runs at max, SUB at medium (high when the model has no
  * medium) — but only when the model's API exposes that level, per pi's
@@ -317,25 +318,28 @@ export default function (pi: ExtensionAPI) {
 			.getCommands()
 			.find((c) => c.source === "skill" && (c.name === `skill:${name}` || c.name.startsWith(`skill:${name}:`)));
 		const path = command?.sourceInfo?.path;
-		if (!path || skillTier(path) !== "super") return { action: "continue" as const };
+		const tier = path ? skillTier(path) : null;
+		if (!tier) return { action: "continue" as const };
 
-		const spec = tierSpec(readSettings(), "super");
+		// `tier: super` switches the session up; `tier: sub` switches it DOWN,
+		// so a mindful-loop run after a SUPER ticket-loop lands back on SUB.
+		const spec = tierSpec(readSettings(), tier);
 		const resolved = resolveSpec(spec, ctx);
 		if (typeof resolved === "string") {
-			notify(ctx, `SUPER tier ${resolved} Staying on ${ctx.model?.id ?? "current model"}.`, "warning");
+			notify(ctx, `${tier.toUpperCase()} tier ${resolved} Staying on ${ctx.model?.id ?? "current model"}.`, "warning");
 			return { action: "continue" as const };
 		}
 		const alreadyOn = ctx.model && `${ctx.model.provider}/${ctx.model.id}` === `${resolved.model.provider}/${resolved.model.id}`;
 		if (!alreadyOn) {
 			if (!(await pi.setModel(resolved.model))) {
-				notify(ctx, `SUPER switch failed: no API key for ${resolved.canonical}.`, "warning");
+				notify(ctx, `${tier.toUpperCase()} switch failed: no API key for ${resolved.canonical}.`, "warning");
 				return { action: "continue" as const };
 			}
-			const effort = tierEffort("super", resolved);
+			const effort = tierEffort(tier, resolved);
 			if (effort) pi.setThinkingLevel(effort);
 			notify(
 				ctx,
-				`Orchestrator skill "${name}" → SUPER model (${resolved.canonical}${effort ? `, effort ${effort}` : ""})`,
+				`Skill "${name}" → ${tier.toUpperCase()} model (${resolved.canonical}${effort ? `, effort ${effort}` : ""})`,
 				"info",
 			);
 		}

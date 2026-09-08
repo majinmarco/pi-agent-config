@@ -5,8 +5,9 @@ permissions, working agreement, one subagent, one extension, and the skills
 that make up a deliberately human-in-the-loop workflow.
 
 The organising idea is that **the human is the reviewer**. The agent plans with
-me, writes one failing test, gets it approved, implements the minimum, and hands
-the diff to [Hunk](https://hunkdiff.com) for me to read. It never commits.
+me, proves each slice red-then-green on its own (testing is autopilot),
+implements the minimum, and hands the diff to [Hunk](https://hunkdiff.com) for
+me to read. It never commits.
 
 ```
 install.sh                     link this repo into place (idempotent)
@@ -36,6 +37,7 @@ pi/agent/
     question-round.ts          the question_round wizard UI (used by grilling)
     custom-header.ts           startup header
     plan-approval.ts           the plan_approval panel (mindful-loop phase 2)
+    perm-why.ts                one-line gpt-oss-20b explanation beside permission asks
     loop-status.ts             live mindful-loop widget, /loop-status panel,
                                and ticket autocomplete for /skill:mindful-loop
 ```

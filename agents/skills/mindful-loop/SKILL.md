@@ -1,7 +1,8 @@
 ---
 name: mindful-loop
-description: User-invoked orchestrator for ONE commit-sized change — a whole ticket when driven by a ticket-loop queue — with the human deciding at every step. Invoke with /skill:mindful-loop. Composes grilling, diagnosing-bugs, and tdd through invoke_skill. One ticket per run; never commits.
+description: User-invoked orchestrator for ONE commit-sized change — a whole ticket when driven by a ticket-loop queue. The human decides scope and reviews the diff; testing runs on autopilot. Invoke with /skill:mindful-loop. Composes grilling, diagnosing-bugs, and tdd through invoke_skill. One ticket per run; never commits.
 disable-model-invocation: true
+tier: sub
 ---
 
 # Mindful loop
@@ -124,25 +125,24 @@ as `Findings:` in the state file either way.
 
 If anything contradicts the plan: STOP for a decision. Otherwise continue.
 
-## 4. Test first
+## 4. Test first (autopilot)
 
-`invoke_skill("tdd")` and follow it, with two overrides:
+`invoke_skill("tdd")` and follow it, with three overrides:
 
 - The seams were agreed in phase 2. Do not re-ask for them.
 - Ignore its reference to a `codebase-design` skill. It is not installed here.
+- Testing is autopilot: the user has delegated tests entirely. Never STOP
+  for test approval, and never ask about test structure, frameworks, or
+  cases — decide, write, run.
 
 Phases 4 and 5 repeat once per slice. In a ticket run a slice is one
 unchecked acceptance criterion, taken in order; a prose run has exactly
 one slice. Invoke tdd once, on the first pass.
 
-Write ONE failing test for the current slice, at an agreed seam. Run it.
-Show the test in full AND show it failing — a test asserted to be red but
-never executed is the failure this phase exists to prevent. STOP.
-The user approves it, edits it, or rewrites it. Approval of this test
-authorizes exactly this slice's implementation, nothing more. Do not touch
-implementation until the test has been explicitly approved.
-
-If their rewrite no longer checks the plan's "done", return to phase 2.
+Write ONE failing test for the current slice, at an agreed seam. Run it
+and show it failing — a test asserted to be red but never executed is the
+failure this phase exists to prevent. Then continue straight to phase 5:
+the plan approved in phase 2 already authorizes this slice.
 
 ## 5. Implement and verify
 
@@ -159,8 +159,9 @@ output. If anything is red, fix it or STOP. Never hand off red.
 In a ticket run, tick the criterion this slice satisfied in the ticket file
 (one small edit; the file is git-ignored, so it does not touch the
 changeset) and update `Criterion:` in the state file. Unchecked criteria
-remain → return to phase 4 for the next one; its failing-test STOP is the
-next ask, so do not add one here. All ticked → phase 6.
+remain → return to phase 4 for the next one, without stopping: testing is
+autopilot, and the next human checkpoint is the Hunk review in phase 6.
+All ticked → phase 6.
 
 ## 6. Hand off
 
@@ -219,10 +220,11 @@ Then STOP.
 
 - Never commit. `git commit` is only `ask` in settings, not denied, so this
   rule is the only thing stopping you.
-- An approved failing test authorizes exactly one slice. Never write
-  implementation past the approved test, and never touch work beyond the
-  current ticket — the next ticket starts only when the user types its
-  command.
+- The approved plan authorizes the ticket's slices, one at a time. Each
+  slice still goes red before green — the test and both runs shown as
+  evidence — but tests never wait for approval; the reviewable record is
+  the point. Never touch work beyond the current ticket — the next ticket
+  starts only when the user types its command.
 - Never work around `invoke_skill` refusing a skill. A refusal means that
   skill is the user's to invoke — `implement` in particular ends by
   committing and by substituting `/code-review` for the human, which is the

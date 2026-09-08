@@ -2,6 +2,7 @@
 name: ticket-loop
 description: User-invoked driver for a multi-commit feature. Interview and investigate until the destination is clear, hand off to to-tickets, then keep a queue that feeds tickets to /skill:mindful-loop one at a time. The human types every command that starts work; this skill prepares context and keeps the queue, nothing more. Invoke with /skill:ticket-loop <idea>, or with a feature slug to resume.
 disable-model-invocation: true
+tier: super
 argument-hint: "an idea to break down, a feature slug to resume, or nothing to find the open queue"
 ---
 
